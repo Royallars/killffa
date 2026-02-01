@@ -2,6 +2,8 @@ package com.killffa.killffa;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
@@ -23,14 +25,18 @@ public class KillffaArena {
     private static final String SPAWN_PITCH = SPAWN_PATH + ".pitch";
 
     private final Set<UUID> participants = new HashSet<>();
+    private final Map<UUID, PlayerStats> stats = new HashMap<>();
     private Location spawn;
+    private int maxPlayers = 8;
 
     public void load(FileConfiguration config) {
         if (!config.contains(SPAWN_WORLD)) {
+            maxPlayers = config.getInt("max-players", maxPlayers);
             return;
         }
         World world = Bukkit.getWorld(config.getString(SPAWN_WORLD));
         if (world == null) {
+            maxPlayers = config.getInt("max-players", maxPlayers);
             return;
         }
         double x = config.getDouble(SPAWN_X);
@@ -39,10 +45,12 @@ public class KillffaArena {
         float yaw = (float) config.getDouble(SPAWN_YAW);
         float pitch = (float) config.getDouble(SPAWN_PITCH);
         spawn = new Location(world, x, y, z, yaw, pitch);
+        maxPlayers = config.getInt("max-players", maxPlayers);
     }
 
     public void save(FileConfiguration config) {
         if (spawn == null) {
+            config.set("max-players", maxPlayers);
             return;
         }
         config.set(SPAWN_WORLD, spawn.getWorld().getName());
@@ -51,6 +59,7 @@ public class KillffaArena {
         config.set(SPAWN_Z, spawn.getZ());
         config.set(SPAWN_YAW, spawn.getYaw());
         config.set(SPAWN_PITCH, spawn.getPitch());
+        config.set("max-players", maxPlayers);
     }
 
     public boolean hasSpawn() {
@@ -69,16 +78,44 @@ public class KillffaArena {
         return Collections.unmodifiableSet(participants);
     }
 
+    public int getMaxPlayers() {
+        return maxPlayers;
+    }
+
+    public void setMaxPlayers(int maxPlayers) {
+        this.maxPlayers = Math.max(1, maxPlayers);
+    }
+
     public boolean isParticipant(Player player) {
         return participants.contains(player.getUniqueId());
     }
 
     public boolean addParticipant(Player player) {
+        if (participants.size() >= maxPlayers) {
+            return false;
+        }
+        stats.putIfAbsent(player.getUniqueId(), new PlayerStats());
         return participants.add(player.getUniqueId());
     }
 
     public boolean removeParticipant(Player player) {
         return participants.remove(player.getUniqueId());
+    }
+
+    public void recordKill(Player killer) {
+        stats.computeIfAbsent(killer.getUniqueId(), ignored -> new PlayerStats()).incrementKills();
+    }
+
+    public void recordDeath(Player victim) {
+        stats.computeIfAbsent(victim.getUniqueId(), ignored -> new PlayerStats()).incrementDeaths();
+    }
+
+    public PlayerStats getStats(Player player) {
+        return stats.getOrDefault(player.getUniqueId(), new PlayerStats());
+    }
+
+    public void resetStats(Player player) {
+        stats.put(player.getUniqueId(), new PlayerStats());
     }
 
     public void giveKit(Player player) {

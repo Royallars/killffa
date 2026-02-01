@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 
 public class KillffaListener implements Listener {
@@ -25,8 +26,10 @@ public class KillffaListener implements Listener {
         event.setKeepInventory(true);
         event.getDrops().clear();
         event.setDeathMessage(null);
+        arena.recordDeath(victim);
         Player killer = victim.getKiller();
         if (killer != null) {
+            arena.recordKill(killer);
             killer.sendMessage(ChatColor.DARK_RED + "Killffa" + ChatColor.GRAY + ": You eliminated " + ChatColor.WHITE + victim.getName());
         }
     }
@@ -57,11 +60,20 @@ public class KillffaListener implements Listener {
             return;
         }
         event.setCancelled(true);
+        arena.recordDeath(player);
         Location spawn = arena.getSpawn();
         if (spawn != null) {
             player.teleport(spawn);
         }
         arena.giveKit(player);
         player.sendMessage(ChatColor.GRAY + "You fell into the void, back to the fight!");
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        if (arena.isParticipant(player)) {
+            arena.removeParticipant(player);
+        }
     }
 }

@@ -46,6 +46,16 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 return handleLeave((Player) sender);
+            case "stats":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "Only players can view stats.");
+                    return true;
+                }
+                if (!sender.hasPermission("killffa.stats")) {
+                    sender.sendMessage(ChatColor.RED + "You do not have permission to view Killffa stats.");
+                    return true;
+                }
+                return handleStats((Player) sender, args);
             case "setspawn":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(ChatColor.RED + "Only players can set the spawn.");
@@ -62,6 +72,18 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 return handleSlay(sender, args);
+            case "setmax":
+                if (!sender.hasPermission("killffa.admin")) {
+                    sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                    return true;
+                }
+                return handleSetMax(sender, args);
+            case "resetstats":
+                if (!sender.hasPermission("killffa.admin")) {
+                    sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                    return true;
+                }
+                return handleResetStats(sender, args);
             default:
                 sendHelp(sender);
                 return true;
@@ -77,8 +99,12 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(ChatColor.RED + "Killffa spawn is not set yet.");
             return true;
         }
-        if (!arena.addParticipant(player)) {
+        if (arena.isParticipant(player)) {
             player.sendMessage(ChatColor.YELLOW + "You are already in the Killffa arena.");
+            return true;
+        }
+        if (!arena.addParticipant(player)) {
+            player.sendMessage(ChatColor.RED + "The Killffa arena is full.");
             return true;
         }
         player.sendMessage(ChatColor.DARK_RED + "Killffa" + ChatColor.GRAY + ": You joined the arena!");
@@ -105,6 +131,24 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleStats(Player player, String[] args) {
+        Player target = player;
+        if (args.length >= 2) {
+            Player lookup = Bukkit.getPlayerExact(args[1]);
+            if (lookup != null) {
+                target = lookup;
+            } else {
+                player.sendMessage(ChatColor.RED + "That player is not online.");
+                return true;
+            }
+        }
+        PlayerStats stats = arena.getStats(target);
+        player.sendMessage(ChatColor.DARK_RED + "Killffa stats for " + ChatColor.WHITE + target.getName());
+        player.sendMessage(ChatColor.GRAY + "Kills: " + ChatColor.WHITE + stats.getKills());
+        player.sendMessage(ChatColor.GRAY + "Deaths: " + ChatColor.WHITE + stats.getDeaths());
+        return true;
+    }
+
     private boolean handleSlay(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ChatColor.RED + "Usage: /killffa slay <player>");
@@ -120,6 +164,38 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleSetMax(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Usage: /killffa setmax <number>");
+            return true;
+        }
+        try {
+            int maxPlayers = Integer.parseInt(args[1]);
+            arena.setMaxPlayers(maxPlayers);
+            arena.save(plugin.getConfig());
+            plugin.saveConfig();
+            sender.sendMessage(ChatColor.GREEN + "Killffa max players set to " + arena.getMaxPlayers() + ".");
+        } catch (NumberFormatException ex) {
+            sender.sendMessage(ChatColor.RED + "Please provide a valid number.");
+        }
+        return true;
+    }
+
+    private boolean handleResetStats(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Usage: /killffa resetstats <player>");
+            return true;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            sender.sendMessage(ChatColor.RED + "That player is not online.");
+            return true;
+        }
+        arena.resetStats(target);
+        sender.sendMessage(ChatColor.GREEN + "Reset stats for " + target.getName() + ".");
+        return true;
+    }
+
     private void teleportAndKit(Player player, Location spawn) {
         player.teleport(spawn);
         arena.giveKit(player);
@@ -130,9 +206,14 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ChatColor.GRAY + "/killffa info" + ChatColor.DARK_GRAY + " - plugin info");
         sender.sendMessage(ChatColor.GRAY + "/killffa join" + ChatColor.DARK_GRAY + " - join the arena");
         sender.sendMessage(ChatColor.GRAY + "/killffa leave" + ChatColor.DARK_GRAY + " - leave the arena");
+        if (sender.hasPermission("killffa.stats")) {
+            sender.sendMessage(ChatColor.GRAY + "/killffa stats [player]" + ChatColor.DARK_GRAY + " - view stats");
+        }
         if (sender.hasPermission("killffa.admin")) {
             sender.sendMessage(ChatColor.GRAY + "/killffa setspawn" + ChatColor.DARK_GRAY + " - set arena spawn");
             sender.sendMessage(ChatColor.GRAY + "/killffa slay <player>" + ChatColor.DARK_GRAY + " - eliminate a player");
+            sender.sendMessage(ChatColor.GRAY + "/killffa setmax <number>" + ChatColor.DARK_GRAY + " - set max players");
+            sender.sendMessage(ChatColor.GRAY + "/killffa resetstats <player>" + ChatColor.DARK_GRAY + " - reset stats");
         }
     }
 
@@ -143,15 +224,24 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
             completions.add("info");
             completions.add("join");
             completions.add("leave");
+            if (sender.hasPermission("killffa.stats")) {
+                completions.add("stats");
+            }
             if (sender.hasPermission("killffa.admin")) {
                 completions.add("setspawn");
                 completions.add("slay");
+                completions.add("setmax");
+                completions.add("resetstats");
             }
             return completions;
         }
-        if (args.length == 2 && "slay".equalsIgnoreCase(args[0])) {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                completions.add(player.getName());
+        if (args.length == 2) {
+            boolean isAdminLookup = "slay".equalsIgnoreCase(args[0]) || "resetstats".equalsIgnoreCase(args[0]);
+            boolean isStatsLookup = "stats".equalsIgnoreCase(args[0]) && sender.hasPermission("killffa.stats");
+            if (isAdminLookup || isStatsLookup) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    completions.add(player.getName());
+                }
             }
         }
         return completions;
