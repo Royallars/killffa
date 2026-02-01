@@ -1,5 +1,6 @@
 # Killffa configuration
 max-players: 8
+join-npc-id: -1
 spawn:
   world: world
   x: 0.0

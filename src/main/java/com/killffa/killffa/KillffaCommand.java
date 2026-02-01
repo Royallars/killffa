@@ -15,10 +15,14 @@ import org.bukkit.entity.Player;
 public class KillffaCommand implements CommandExecutor, TabCompleter {
     private final KillffaPlugin plugin;
     private final KillffaArena arena;
+    private final KillffaMenu menu;
+    private final KillffaNpcHandler npcManager;
 
-    public KillffaCommand(KillffaPlugin plugin, KillffaArena arena) {
+    public KillffaCommand(KillffaPlugin plugin, KillffaArena arena, KillffaMenu menu, KillffaNpcHandler npcManager) {
         this.plugin = plugin;
         this.arena = arena;
+        this.menu = menu;
+        this.npcManager = npcManager;
     }
 
     @Override
@@ -40,6 +44,17 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 return handleJoin((Player) sender);
+            case "menu":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "Only players can use the menu.");
+                    return true;
+                }
+                if (!sender.hasPermission("killffa.menu")) {
+                    sender.sendMessage(ChatColor.RED + "You do not have permission to open the menu.");
+                    return true;
+                }
+                menu.open((Player) sender);
+                return true;
             case "leave":
                 if (!(sender instanceof Player)) {
                     sender.sendMessage(ChatColor.RED + "Only players can leave the arena.");
@@ -84,6 +99,22 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 return handleResetStats(sender, args);
+            case "setjoinnpc":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage(ChatColor.RED + "Only players can set the join NPC.");
+                    return true;
+                }
+                if (!sender.hasPermission("killffa.admin")) {
+                    sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                    return true;
+                }
+                return npcManager.createJoinNpc((Player) sender);
+            case "removejoinnpc":
+                if (!sender.hasPermission("killffa.admin")) {
+                    sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                    return true;
+                }
+                return npcManager.removeJoinNpc(sender);
             default:
                 sendHelp(sender);
                 return true;
@@ -205,6 +236,9 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ChatColor.DARK_RED + "Killffa commands:");
         sender.sendMessage(ChatColor.GRAY + "/killffa info" + ChatColor.DARK_GRAY + " - plugin info");
         sender.sendMessage(ChatColor.GRAY + "/killffa join" + ChatColor.DARK_GRAY + " - join the arena");
+        if (sender.hasPermission("killffa.menu")) {
+            sender.sendMessage(ChatColor.GRAY + "/killffa menu" + ChatColor.DARK_GRAY + " - open the GUI");
+        }
         sender.sendMessage(ChatColor.GRAY + "/killffa leave" + ChatColor.DARK_GRAY + " - leave the arena");
         if (sender.hasPermission("killffa.stats")) {
             sender.sendMessage(ChatColor.GRAY + "/killffa stats [player]" + ChatColor.DARK_GRAY + " - view stats");
@@ -214,6 +248,8 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.GRAY + "/killffa slay <player>" + ChatColor.DARK_GRAY + " - eliminate a player");
             sender.sendMessage(ChatColor.GRAY + "/killffa setmax <number>" + ChatColor.DARK_GRAY + " - set max players");
             sender.sendMessage(ChatColor.GRAY + "/killffa resetstats <player>" + ChatColor.DARK_GRAY + " - reset stats");
+            sender.sendMessage(ChatColor.GRAY + "/killffa setjoinnpc" + ChatColor.DARK_GRAY + " - spawn join NPC");
+            sender.sendMessage(ChatColor.GRAY + "/killffa removejoinnpc" + ChatColor.DARK_GRAY + " - remove join NPC");
         }
     }
 
@@ -223,6 +259,9 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             completions.add("info");
             completions.add("join");
+            if (sender.hasPermission("killffa.menu")) {
+                completions.add("menu");
+            }
             completions.add("leave");
             if (sender.hasPermission("killffa.stats")) {
                 completions.add("stats");
@@ -232,6 +271,8 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
                 completions.add("slay");
                 completions.add("setmax");
                 completions.add("resetstats");
+                completions.add("setjoinnpc");
+                completions.add("removejoinnpc");
             }
             return completions;
         }

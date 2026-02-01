@@ -4,6 +4,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Comparator;
+import java.util.stream.Collectors;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
@@ -111,11 +114,22 @@ public class KillffaArena {
     }
 
     public PlayerStats getStats(Player player) {
-        return stats.getOrDefault(player.getUniqueId(), new PlayerStats());
+        return getStats(player.getUniqueId());
+    }
+
+    public PlayerStats getStats(UUID playerId) {
+        return stats.getOrDefault(playerId, new PlayerStats());
     }
 
     public void resetStats(Player player) {
         stats.put(player.getUniqueId(), new PlayerStats());
+    }
+
+    public List<Map.Entry<UUID, PlayerStats>> getTopKills(int limit) {
+        return stats.entrySet().stream()
+            .sorted(Comparator.comparingInt(entry -> -entry.getValue().getKills()))
+            .limit(limit)
+            .collect(Collectors.toList());
     }
 
     public void giveKit(Player player) {

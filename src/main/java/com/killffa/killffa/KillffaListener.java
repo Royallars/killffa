@@ -2,18 +2,23 @@ package com.killffa.killffa;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 
 public class KillffaListener implements Listener {
+    private final KillffaPlugin plugin;
     private final KillffaArena arena;
 
-    public KillffaListener(KillffaArena arena) {
+    public KillffaListener(KillffaPlugin plugin, KillffaArena arena) {
+        this.plugin = plugin;
         this.arena = arena;
     }
 
@@ -75,5 +80,22 @@ public class KillffaListener implements Listener {
         if (arena.isParticipant(player)) {
             arena.removeParticipant(player);
         }
+    }
+
+    @EventHandler
+    public void onSandPlace(BlockPlaceEvent event) {
+        Player player = event.getPlayer();
+        if (!arena.isParticipant(player)) {
+            return;
+        }
+        Block block = event.getBlockPlaced();
+        if (block.getType() != Material.SAND) {
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            if (block.getType() == Material.SAND) {
+                block.setType(Material.AIR);
+            }
+        }, 100L);
     }
 }
