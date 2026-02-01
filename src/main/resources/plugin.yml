@@ -1,0 +1,16 @@
+name: Killffa
+version: 1.0.1
+main: com.killffa.killffa.KillffaPlugin
+api-version: "1.21"
+description: Killffa free-for-all arena for Paper 1.21.x.
+commands:
+  killffa:
+    description: Main Killffa command.
+    usage: /killffa <info|join|leave|setspawn|slay>
+permissions:
+  killffa.join:
+    description: Allows joining the Killffa arena.
+    default: true
+  killffa.admin:
+    description: Allows admin Killffa commands.
+    default: op
