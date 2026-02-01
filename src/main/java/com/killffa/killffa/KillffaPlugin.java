@@ -31,6 +31,8 @@ public final class KillffaPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        arena.save(getConfig());
+        saveConfig();
         getLogger().info("Killffa disabled.");
     }
 

@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -26,6 +27,7 @@ public class KillffaArena {
     private static final String SPAWN_Z = SPAWN_PATH + ".z";
     private static final String SPAWN_YAW = SPAWN_PATH + ".yaw";
     private static final String SPAWN_PITCH = SPAWN_PATH + ".pitch";
+    private static final String STATS_PATH = "stats";
 
     private final Set<UUID> participants = new HashSet<>();
     private final Map<UUID, PlayerStats> stats = new HashMap<>();
@@ -36,11 +38,13 @@ public class KillffaArena {
     public void load(FileConfiguration config) {
         if (!config.contains(SPAWN_WORLD)) {
             maxPlayers = config.getInt("max-players", maxPlayers);
+            loadStats(config);
             return;
         }
         World world = Bukkit.getWorld(config.getString(SPAWN_WORLD));
         if (world == null) {
             maxPlayers = config.getInt("max-players", maxPlayers);
+            loadStats(config);
             return;
         }
         double x = config.getDouble(SPAWN_X);
@@ -50,11 +54,13 @@ public class KillffaArena {
         float pitch = (float) config.getDouble(SPAWN_PITCH);
         spawn = new Location(world, x, y, z, yaw, pitch);
         maxPlayers = config.getInt("max-players", maxPlayers);
+        loadStats(config);
     }
 
     public void save(FileConfiguration config) {
         if (spawn == null) {
             config.set("max-players", maxPlayers);
+            saveStats(config);
             return;
         }
         config.set(SPAWN_WORLD, spawn.getWorld().getName());
@@ -64,6 +70,7 @@ public class KillffaArena {
         config.set(SPAWN_YAW, spawn.getYaw());
         config.set(SPAWN_PITCH, spawn.getPitch());
         config.set("max-players", maxPlayers);
+        saveStats(config);
     }
 
     public boolean hasSpawn() {
@@ -125,6 +132,39 @@ public class KillffaArena {
 
     public void resetStats(Player player) {
         stats.put(player.getUniqueId(), new PlayerStats());
+    }
+
+    public void loadStats(FileConfiguration config) {
+        stats.clear();
+        ConfigurationSection section = config.getConfigurationSection(STATS_PATH);
+        if (section == null) {
+            return;
+        }
+        for (String key : section.getKeys(false)) {
+            try {
+                UUID playerId = UUID.fromString(key);
+                int kills = section.getInt(key + ".kills");
+                int deaths = section.getInt(key + ".deaths");
+                int currentStreak = section.getInt(key + ".current-streak");
+                int bestStreak = section.getInt(key + ".best-streak");
+                stats.put(playerId, new PlayerStats(kills, deaths, currentStreak, bestStreak));
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed UUIDs.
+            }
+        }
+    }
+
+    public void saveStats(FileConfiguration config) {
+        config.set(STATS_PATH, null);
+        ConfigurationSection section = config.createSection(STATS_PATH);
+        for (Map.Entry<UUID, PlayerStats> entry : stats.entrySet()) {
+            String key = entry.getKey().toString();
+            PlayerStats playerStats = entry.getValue();
+            section.set(key + ".kills", playerStats.getKills());
+            section.set(key + ".deaths", playerStats.getDeaths());
+            section.set(key + ".current-streak", playerStats.getCurrentStreak());
+            section.set(key + ".best-streak", playerStats.getBestStreak());
+        }
     }
 
     public void applySpawnProtection(Player player, int seconds) {

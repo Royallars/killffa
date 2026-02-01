@@ -237,6 +237,8 @@ public class KillffaCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleReload(CommandSender sender) {
+        arena.save(plugin.getConfig());
+        plugin.saveConfig();
         plugin.reloadConfig();
         arena.load(plugin.getConfig());
         sender.sendMessage(ChatColor.GREEN + "Killffa configuration reloaded.");

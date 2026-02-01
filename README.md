@@ -11,6 +11,7 @@ Killffa is a fast-paced free-for-all arena plugin for Paper 1.21.x. Players can 
 - Spawn protection on join/respawn to prevent immediate spawn kills.
 - Automatic healing and food restoration on kills.
 - Temporary sand blocks for arena builders (auto-remove after ~5 seconds).
+- Player stats saved to config on shutdown/reload for persistent leaderboards.
 
 ## Commands
 | Command | Description | Permission |
