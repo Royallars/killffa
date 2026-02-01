@@ -1,0 +1,18 @@
+# Killffa configuration
+max-players: 8
+join-npc-id: -1
+spawn-protection-seconds: 3
+kill-heal-hearts: 2.0
+streak-announcements:
+  - 3
+  - 5
+  - 10
+streak-reward-item: GOLDEN_APPLE
+streak-reward-amount: 1
+spawn:
+  world: world
+  x: 0.0
+  y: 100.0
+  z: 0.0
+  yaw: 0.0
+  pitch: 0.0
